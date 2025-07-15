@@ -9,6 +9,6 @@ import Foundation
 
 public extension Module {
     enum Interface: String {
-        case dummyInterface = "DummyInterface"
+        case moodieAuthInterface = "MoodieAuthInterface"
     }
 }

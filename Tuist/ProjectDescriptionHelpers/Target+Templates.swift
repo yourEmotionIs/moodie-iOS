@@ -36,7 +36,9 @@ public extension Target {
     
     static func makeCoreTarget(
         name: String,
-        dependencies: [TargetDependency] = []
+        dependencies: [TargetDependency] = [],
+        infoPlist: InfoPlist = .default,
+        hasResource: Bool = false
     ) -> Target{
         return .target(
             name: name,
@@ -44,9 +46,11 @@ public extension Target {
             product: .staticFramework,
             bundleId: "com.\(name).core",
             deploymentTargets: .iOS(Project.depolymentTarget),
-            infoPlist: .default,
+            infoPlist: infoPlist,
             sources: ["Sources/**"],
+            resources: hasResource ? ["Resources/**"] : nil,
             dependencies: dependencies
+            
         )
     }
     

@@ -9,6 +9,6 @@ import Foundation
 
 public extension Module {
     enum Feature: String {
-        case featureDummy = "FeatureDummy"
+        case moodieAuth = "MoodieAuth"
     }
 }

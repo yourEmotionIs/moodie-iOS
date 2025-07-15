@@ -9,6 +9,6 @@ import Foundation
 
 public extension Module {
     enum Testing: String {
-        case dummyTesting = "DummyTesting"
+        case moodieAuthTesting = "MoodieAuthTesting"
     }
 }

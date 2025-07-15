@@ -34,10 +34,15 @@ extension Project {
         return Project(
             name: target.rawValue,
             targets: [
-                .makeFeatureTarget(
+                .makeCoreTarget(
                     name: target.rawValue,
-                    dependencies: dependencies
+                    dependencies: dependencies,
+                    infoPlist: target.infoPlist,
+                    hasResource: target.hasResource
                 )
+            ],
+            resourceSynthesizers: [
+                .custom(name: "Fonts", parser: .fonts, extensions: ["otf", "ttf"])
             ]
         )
     }
