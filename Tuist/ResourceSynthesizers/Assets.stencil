@@ -1,0 +1,99 @@
+// swiftlint:disable all
+// swift-format-ignore-file
+// swiftformat:disable all
+// Generated using tuist — https://github.com/tuist/tuist
+
+import Foundation
+#if os(iOS) || os(tvOS) || os(watchOS)
+import UIKit
+#elseif os(macOS)
+import AppKit
+#endif
+#if canImport(SwiftUI)
+import SwiftUI
+#endif
+
+// swiftlint:disable superfluous_disable_command file_length implicit_return
+
+// MARK: - Asset Catalogs
+
+{% if catalogs %}
+
+// MARK: - Colors
+public extension UIColor {
+{% macro processAssets assets %}
+  {% for asset in assets %}
+    {% if asset.type == "color" %}
+  static let {{asset.name|swiftIdentifier:"pretty"|lowerFirstWord|escapeReservedKeywords}} = UIColor(named: "{{asset.name}}", in: Bundle.module, compatibleWith: nil)!
+    {% elif asset.type == "group" and asset.items %}
+      {% call processAssets asset.items %}
+    {% elif asset.items %}
+      {% call processAssets asset.items %}
+    {% endif %}
+  {% endfor %}
+{% endmacro %}
+{% for catalog in catalogs %}
+  {% call processAssets catalog.assets %}
+{% endfor %}
+}
+
+// MARK: - Images
+public extension UIImage {
+{% macro processImageAssets assets %}
+  {% for asset in assets %}
+    {% if asset.type == "image" %}
+  static let {{asset.name|swiftIdentifier:"pretty"|lowerFirstWord|escapeReservedKeywords}} = UIImage(named: "{{asset.name}}", in: Bundle.module, compatibleWith: nil)!
+    {% elif asset.type == "group" and asset.items %}
+      {% call processImageAssets asset.items %}
+    {% elif asset.items %}
+      {% call processImageAssets asset.items %}
+    {% endif %}
+  {% endfor %}
+{% endmacro %}
+{% for catalog in catalogs %}
+  {% call processImageAssets catalog.assets %}
+{% endfor %}
+}
+
+#if canImport(SwiftUI)
+// MARK: - SwiftUI Colors
+public extension Color {
+{% macro processSwiftUIColors assets %}
+  {% for asset in assets %}
+    {% if asset.type == "color" %}
+  static let {{asset.name|swiftIdentifier:"pretty"|lowerFirstWord|escapeReservedKeywords}} = Color("{{asset.name}}", bundle: Bundle.module)
+    {% elif asset.type == "group" and asset.items %}
+      {% call processSwiftUIColors asset.items %}
+    {% elif asset.items %}
+      {% call processSwiftUIColors asset.items %}
+    {% endif %}
+  {% endfor %}
+{% endmacro %}
+{% for catalog in catalogs %}
+  {% call processSwiftUIColors catalog.assets %}
+{% endfor %}
+}
+
+// MARK: - SwiftUI Images
+public extension Image {
+{% macro processSwiftUIImages assets %}
+  {% for asset in assets %}
+    {% if asset.type == "image" %}
+  static let {{asset.name|swiftIdentifier:"pretty"|lowerFirstWord|escapeReservedKeywords}} = Image("{{asset.name}}", bundle: Bundle.module)
+    {% elif asset.type == "group" and asset.items %}
+      {% call processSwiftUIImages asset.items %}
+    {% elif asset.items %}
+      {% call processSwiftUIImages asset.items %}
+    {% endif %}
+  {% endfor %}
+{% endmacro %}
+{% for catalog in catalogs %}
+  {% call processSwiftUIImages catalog.assets %}
+{% endfor %}
+}
+#endif
+
+{% endif %}
+
+// swiftlint:enable all
+// swiftformat:enable all

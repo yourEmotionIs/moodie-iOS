@@ -42,6 +42,7 @@ extension Project {
                 )
             ],
             resourceSynthesizers: [
+                .custom(name: "Assets", parser: .assets, extensions: ["xcassets"]),
                 .custom(name: "Fonts", parser: .fonts, extensions: ["otf", "ttf"])
             ]
         )
