@@ -19,5 +19,9 @@ public extension Module {
         case realmSwift = "RealmSwift"
         case quick = "Quick"
         case nimble = "Nimble"
+        
+        case kakaoSDKCommon = "KakaoSDKCommon"
+        case kakaoSDKAuth = "KakaoSDKAuth"
+        case kakaoSDKUser = "KakaoSDKUser"
     }
 }
