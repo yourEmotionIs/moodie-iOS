@@ -11,7 +11,9 @@ import ProjectDescriptionHelpers
 let project = Project.makeCoreModule(
     target: .coreAuthKit,
     dependencies: [
-        
+        .thirdParty(target: .kakaoSDKAuth),
+        .thirdParty(target: .kakaoSDKCommon),
+        .thirdParty(target: .kakaoSDKUser),
     ]
 )
 
