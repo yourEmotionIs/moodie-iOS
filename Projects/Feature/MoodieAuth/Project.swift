@@ -11,6 +11,8 @@ import ProjectDescriptionHelpers
 let project = Project.makeFeatureModule(
     target: .moodieAuth,
     dependencies: [
-        .core(target: .coreFoundationKit)
+        .core(target: .coreFoundationKit),
+        .core(target: .coreAuthKit),
+        .core(target: .coreUIKit)
     ]
 )
