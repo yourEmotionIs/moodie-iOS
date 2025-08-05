@@ -10,5 +10,6 @@ import Foundation
 public extension Module {
     enum Feature: String {
         case moodieAuth = "MoodieAuth"
+        case moodieOnboarding = "MoodieOnboarding"
     }
 }
