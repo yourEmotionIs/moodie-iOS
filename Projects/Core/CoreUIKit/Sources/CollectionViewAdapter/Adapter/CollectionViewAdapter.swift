@@ -43,6 +43,16 @@ public final class CollectionViewAdapter: NSObject {
         willDisplayCellIdentifierSubject.eraseToAnyPublisher()
     }
     
+    private let didEndDisplayingCellSubject = PassthroughSubject<IndexPath, Never>()
+    public var didEndDisplayingCellPublisher: AnyPublisher<IndexPath, Never> {
+        didEndDisplayingCellSubject.eraseToAnyPublisher()
+    }
+    
+    private let didEndDeceleratingSubject = PassthroughSubject<Void, Never>()
+    public var didEndDeceleratingPublisher: AnyPublisher<Void, Never> {
+        didEndDeceleratingSubject.eraseToAnyPublisher()
+    }
+    
     private let visibleItemSubject = PassthroughSubject<IndexPath, Never>()
     public var visibleItemPublisher: AnyPublisher<IndexPath, Never> {
         visibleItemSubject.eraseToAnyPublisher()
@@ -51,6 +61,21 @@ public final class CollectionViewAdapter: NSObject {
     private let didScrollSubject = PassthroughSubject<(visibleItems: [NSCollectionLayoutVisibleItem], contentOffset: CGPoint), Never>()
     public var didScrollPublisher: AnyPublisher<(visibleItems: [NSCollectionLayoutVisibleItem], contentOffset: CGPoint), Never> {
         didScrollSubject.eraseToAnyPublisher()
+    }
+    
+    private let scrollDirectionSubject = PassthroughSubject<ScrollDirection, Never>()
+    public var scrollDirectionPublisher: AnyPublisher<ScrollDirection, Never> {
+        scrollDirectionSubject.eraseToAnyPublisher()
+    }
+    
+    private let contentOffsetSubject = PassthroughSubject<CGPoint, Never>()
+    public var contentOffsetPublisher: AnyPublisher<CGPoint, Never> {
+        contentOffsetSubject.eraseToAnyPublisher()
+    }
+    
+    private let scrollDirectionAndContentOffsetSubject = PassthroughSubject<(CGPoint, ScrollDirection), Never>()
+    public var scrollDirectionAndContentOffsetPublisher: AnyPublisher<(CGPoint, ScrollDirection), Never> {
+        scrollDirectionAndContentOffsetSubject.eraseToAnyPublisher()
     }
     
     private let actionEventSubject = PassthroughSubject<ActionEventItem, Never>()
@@ -72,7 +97,10 @@ public final class CollectionViewAdapter: NSObject {
         with collectionView: UICollectionView,
         lineSpacingForSectionAt: CGFloat = .zero,
         itemSpacingForSectionAt: CGFloat = .zero,
-        isAnimationEnabled: Bool = false
+        isAnimationEnabled: Bool = false,
+        isPagingEnabled: Bool = false,
+        showsHorizontalScrollIndicator: Bool = true,
+        showsVerticalScrollIndicator: Bool = true
     ) {
         super.init()
         
@@ -80,6 +108,9 @@ public final class CollectionViewAdapter: NSObject {
         self.collectionView?.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         
         self.collectionView?.delegate = self
+        self.collectionView?.isPagingEnabled = isPagingEnabled
+        self.collectionView?.showsHorizontalScrollIndicator = showsHorizontalScrollIndicator
+        self.collectionView?.showsVerticalScrollIndicator = showsVerticalScrollIndicator
         
         self.lineSpacingForSectionAt = lineSpacingForSectionAt
         self.itemSpacingForSectionAt = itemSpacingForSectionAt
@@ -110,6 +141,26 @@ public final class CollectionViewAdapter: NSObject {
             // 현재 방향에 따라 새로운 방향 설정
             flowLayout.scrollDirection = .horizontal
         }
+    }
+    
+    public func scrollToTop(isAnimated: Bool = false) {
+        collectionView?.setContentOffset(.zero, animated: isAnimated)
+    }
+    
+    public func scrollToItem(
+        to identifier: String,
+        scrollPosition : UICollectionView.ScrollPosition = .centeredVertically,
+        animated: Bool = true
+    ) {
+        if let targetIndexPath = findIndexPathByIdentifier(with: identifier) {
+            DispatchQueue.main.async { [weak self] in
+                self?.collectionView?.scrollToItem(at: targetIndexPath, at: scrollPosition, animated: animated)
+            }
+        }
+    }
+    
+    public func scrollToContentOffset(to contentOffset: CGPoint, animated: Bool) {
+        collectionView?.setContentOffset(contentOffset, animated: animated)
     }
 }
 
@@ -196,7 +247,52 @@ extension CollectionViewAdapter {
     }
     
     private func bindDelegateEvent() {
-        // do something
+        collectionView?.contentOffsetPublisher
+            .map { $0.y }
+            .removeDuplicates()
+            .scan((previous: CGFloat(0), current: CGFloat(0), direction: ScrollDirection.none)) { state, newOffset in
+                let offsetDifference = newOffset - state.current
+                let threshold: CGFloat = 0.0
+                
+                let newDirection: ScrollDirection
+                if abs(offsetDifference) > threshold {
+                    newDirection = offsetDifference > 0 ? .down : .up
+                } else {
+                    newDirection = state.direction // 기존 방향 유지
+                }
+                
+                return (previous: state.current, current: newOffset, direction: newDirection)
+            }
+            .map { $0.direction }
+            .removeDuplicates()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] direction in
+                guard let self else { return }
+                
+                switch direction {
+                case .up:
+                    self.scrollDirectionSubject.send(.up)
+                case .down:
+                    self.scrollDirectionSubject.send(.down)
+                case .none:
+                    break
+                }
+            }
+            .store(in: &cancellables)
+        
+        collectionView?.contentOffsetPublisher
+            .removeDuplicates()
+            .sink(receiveValue: { [weak self] contentOffset in
+                self?.contentOffsetSubject.send(contentOffset)
+            })
+            .store(in: &cancellables)
+        
+        collectionView?.contentOffsetPublisher
+            .combineLatest(scrollDirectionPublisher)
+            .sink(receiveValue: { [weak self] (contentOffset, scrollDirection) in
+                self?.scrollDirectionAndContentOffsetSubject.send((contentOffset, scrollDirection))
+            })
+            .store(in: &cancellables)
     }
     
     private func cancelForPrepareForReuse(with view: UICollectionReusableView, cellCancellables: [AnyCancellable]) {
@@ -265,7 +361,7 @@ extension CollectionViewAdapter {
             return sections[safe: indexPath.section]?.header
         case UICollectionView.elementKindSectionFooter:
 //            print("::: footer return")
-            return sections[safe: indexPath.section]?.header
+            return sections[safe: indexPath.section]?.footer
         default:
             return nil
         }
@@ -358,9 +454,15 @@ extension CollectionViewAdapter: UICollectionViewDelegateFlowLayout {
     }
     
     public func collectionView(_ collectionView: UICollectionView, didEndDisplaying cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
-        guard let itemModel = itemModel(at: indexPath) else {
+        guard let _ = itemModel(at: indexPath) else {
             return
         }
+        
+        didEndDisplayingCellSubject.send(indexPath)
+    }
+    
+    public func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
+        didEndDeceleratingSubject.send(())
     }
     
     private func getCachedSize(section: SectionModelType, item: ItemModelType) -> CGSize {
@@ -456,5 +558,11 @@ extension CollectionViewAdapter: UICollectionViewDelegateFlowLayout {
         }
         
         return viewType.init(frame: .zero)
+    }
+}
+
+extension CollectionViewAdapter {
+    public enum ScrollDirection: Equatable {
+        case up, down, none
     }
 }
