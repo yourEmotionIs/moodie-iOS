@@ -8,50 +8,130 @@
 import UIKit
 import CoreUIKit
 import CoreAuthKit
+import Combine
+import CombineCocoa
 
-public final class MoodieLoginView: BaseView {
-    private let exampleLabel = UILabel(
-        typography: Typography(
-            fontType: .appleSDGothic,
-            size: .size24,
-            weight: .bold,
-            color: .gray1
-        )
-    ).then {
-        $0.text = "하하하핳하 샘플이지롱"
-    }
-    
-    public override func setup() {
-        super.setup()
-        
-        self.backgroundColor = .gray8
-    }
-    
-    public override func setupSubviews() {
-        addSubview(exampleLabel)
-    }
-    
-    public override func setupConstraints() {
-        exampleLabel.snp.makeConstraints { make in
-            make.center.equalToSuperview()
-            make.horizontalEdges.equalToSuperview().inset(16)
-        }
+extension MoodieLoginViewController {
+    private enum Constants {
+        static let introduceCardGroupWidthRatio: CGFloat = 0.84
+        static let introduceCardGroupSpace: CGFloat = 8
     }
 }
 
-//TODO: 추후 DI Container에서 해당 뷰를 다룰 수 있게 바꿔야함
-public final class MoodieLoginViewController: ViewController<MoodieLoginView> {
+final class MoodieLoginViewController: ViewController<MoodieLoginView> {
+    private var cancellables = Set<AnyCancellable>()
+    private let currentPagePublisher = PassthroughSubject<Int, Never>()
     
-    public override func viewDidLoad() {
+    override func viewDidLoad() {
         super.viewDidLoad()
+        
+        setup()
     }
     
-    public override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(animated)
+    private func setup() {
+        setupCollectionView()
+        bindActions()
+    }
+    
+    private func bindActions() {
+        currentPagePublisher
+            .receive(on: DispatchQueue.main)
+            .removeDuplicates()
+            .sink { [weak self] currentPage in
+                self?.contentView.updatePageState(with: currentPage)
+            }
+            .store(in: &cancellables)
         
-        Task { @MainActor in
-            try await CoreAuthKit.shared.performAppleLogin()
-//            try await CoreAuthKit.shared.performKakaoLogin()
+        contentView.onTouchKakaoLogin
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] in
+                self?.navigateToOnboardingView()
+            }
+            .store(in: &cancellables)
+        
+        contentView.onTouchAppleLogin
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] in
+                self?.navigateToOnboardingView()
+            }
+            .store(in: &cancellables)
+    }
+    
+    private func setupCollectionView() {
+        contentView.collectionView.dataSource = self
+        
+        contentView.collectionView.register(
+            TextCollectionView.self,
+            forCellWithReuseIdentifier: TextCollectionView.reuseIdentifier
+        )
+        
+        /// Setup collectionView layout
+        let groupSize = NSCollectionLayoutSize(
+            widthDimension: .fractionalWidth(Constants.introduceCardGroupWidthRatio),
+            heightDimension: .fractionalHeight(1)
+        )
+        
+        let itemSize = NSCollectionLayoutSize(
+            widthDimension: .fractionalWidth(1),
+            heightDimension: .fractionalHeight(1)
+        )
+        
+        let item = NSCollectionLayoutItem(layoutSize: itemSize)
+        
+        let group = NSCollectionLayoutGroup.horizontal(layoutSize: groupSize, subitems: [item])
+
+        
+        let section = NSCollectionLayoutSection(group: group)
+        section.orthogonalScrollingBehavior = .groupPagingCentered
+        section.interGroupSpacing = Constants.introduceCardGroupSpace
+        section.visibleItemsInvalidationHandler = { [weak self] (visibleItems, contentOffset, environment) in
+            let cellWidth: CGFloat = UIScreen.main.bounds.width * Constants.introduceCardGroupWidthRatio
+            let spacing: CGFloat = Constants.introduceCardGroupSpace
+            let pageWidth = cellWidth + spacing
+            let currentPage = Int(round(contentOffset.x / pageWidth))
+            
+            self?.currentPagePublisher.send(currentPage)
         }
+        
+        contentView.collectionView.setCollectionViewLayout(
+            UICollectionViewCompositionalLayout(section: section),
+            animated: true
+        )
+    }
+    
+    private func navigateToOnboardingView() {
+        let onboardingViewController = OnboardingViewController()
+        
+        navigationController?.pushViewController(onboardingViewController, animated: true)
     }
 }
+
+extension MoodieLoginViewController: UICollectionViewDataSource {
+    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+        return 4
+    }
+    
+    func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+        guard let cell = collectionView.dequeueReusableCell(withReuseIdentifier: TextCollectionView.reuseIdentifier, for: indexPath) as? TextCollectionView else {
+            return UICollectionViewCell()
+        }
+        
+        return cell
+     }
+}
+
+final class TextCollectionView: UICollectionViewCell {
+    static let reuseIdentifier = String(describing: TextCollectionView.self)
+    
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        
+        contentView.backgroundColor = .systemCyan
+        contentView.layer.cornerRadius = 24
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+}
+

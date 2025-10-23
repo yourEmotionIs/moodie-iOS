@@ -7,21 +7,23 @@
 
 import UIKit
 import KakaoSDKAuth
-import MoodieAuth
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow? = nil
     
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        let navigationController = UINavigationController(
-            rootViewController: MoodieLoginViewController()
-        )
-        
         let window = UIWindow(frame: UIScreen.main.bounds)
         self.window = window
-        self.window?.rootViewController = navigationController
-        self.window?.makeKeyAndVisible()
+        
+        let appCoordinator = AppCoordinator(window: self.window)
+        appCoordinator.start()
+        
+//        let loginDIContainer = MoodieLoginCoordinatorImpl()
+//        let rootNavigationController = UINavigationController()
+//        loginDIContainer.navigateLoginView(navi: rootNavigationController)
+        
+        
         
         return true
     }
