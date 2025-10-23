@@ -19,7 +19,8 @@ public enum NavigationBarButtonType: Hashable {
         identifier: String,
         image: UIImage?,
         color: UIColor = .black,
-        renderingMode: UIImage.RenderingMode = .alwaysTemplate
+        renderingMode: UIImage.RenderingMode = .alwaysTemplate,
+        size: CGSize = CGSize(width: 40, height: 40)
     )
     case backText(
         identifier: String,
@@ -33,6 +34,7 @@ public enum NavigationBarButtonType: Hashable {
         image: UIImage?,
         color: UIColor = .black,
         renderingMode: UIImage.RenderingMode = .alwaysTemplate,
-        enableAutoClose: Bool = true
+        enableAutoClose: Bool = true,
+        size: CGSize = CGSize(width: 40, height: 40)
     )
 }

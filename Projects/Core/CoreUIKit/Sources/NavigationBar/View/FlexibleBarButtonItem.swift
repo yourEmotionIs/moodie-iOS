@@ -32,19 +32,30 @@ public final class FlexibleBarButtonItem: UIBarButtonItem {
         customView = button
     }
     
-    public init(image: UIImage?, tintColor: UIColor, renderingMode: UIImage.RenderingMode = .alwaysTemplate) {
+    public init(
+        image: UIImage?,
+        tintColor: UIColor,
+        renderingMode: UIImage.RenderingMode = .alwaysTemplate,
+        size: CGSize
+    ) {
         super.init()
         
         button.do {
             $0.tintColor = tintColor
             $0.backgroundColor = .clear
-            $0.frame = CGRect(origin: .zero, size: CGSize(width: 40, height: 40))
+            $0.frame = CGRect(
+                origin: .zero,
+                size: CGSize(
+                    width: size.width,
+                    height: size.height
+                )
+            )
             $0.setImage(
                 image?.withRenderingMode(renderingMode),
                 for: .normal
             )
+            $0.imageEdgeInsets = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
         }
-        
         customView = button
     }
     
