@@ -1,2 +1,5 @@
 [tools]
 tuist = "4.48.2"
+
+[env]
+DEVELOPER_DIR = "/Users/isung-in/Downloads/Xcode 2.app/Contents/Developer"

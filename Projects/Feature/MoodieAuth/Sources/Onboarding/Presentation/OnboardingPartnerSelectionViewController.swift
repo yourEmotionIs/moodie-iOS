@@ -27,6 +27,18 @@ final class OnboardingPartnerSelectionView: BaseView {
     }
     
     //MARK: UI Components
+    private let descriptionLabel = UILabel(
+        typography: Typography(
+            fontType: .nanumSquareRound,
+            size: .size24,
+            weight: .heavy,
+            color: .gray1,
+            applyLineHeight: true
+        )
+    ).then {
+        $0.text = "누구와 함께 사용하나요"
+    }
+    
     private let selectionItemContainerView = UIStackView().then {
         $0.axis = .horizontal
         $0.distribution = .fillEqually
@@ -59,6 +71,7 @@ final class OnboardingPartnerSelectionView: BaseView {
     }
     
     override func setupSubviews() {
+        addSubview(descriptionLabel)
         addSubview(selectionItemContainerView)
         [boySelectionItemView, girlSelectionItemView]
             .forEach { selectionItemContainerView.addArrangedSubview($0) }
@@ -67,8 +80,13 @@ final class OnboardingPartnerSelectionView: BaseView {
     }
     
     override func setupConstraints() {
+        descriptionLabel.snp.makeConstraints { make in
+            make.top.equalToSuperview().inset(8)
+            make.horizontalEdges.equalToSuperview().inset(20)
+        }
+        
         selectionItemContainerView.snp.makeConstraints { make in
-            make.top.equalToSuperview().inset(18)
+            make.top.equalTo(descriptionLabel.snp.bottom).offset(18)
             make.horizontalEdges.equalToSuperview().inset(20)
         }
         
@@ -89,11 +107,15 @@ final class OnboardingPartnerSelectionView: BaseView {
     func toggleBoySelection() {
         boySelectionItemView.activeState = boySelectionItemView.activeState == .active ? .inactive : .active
         girlSelectionItemView.activeState = .inactive
+        
+        nextButton.buttonType = boySelectionItemView.activeState == .active || girlSelectionItemView.activeState == .active ? .active : .inactive
     }
     
     func toggleGirlSelection() {
         girlSelectionItemView.activeState = girlSelectionItemView.activeState == .active ? .inactive : .active
         boySelectionItemView.activeState = .inactive
+        
+        nextButton.buttonType = boySelectionItemView.activeState == .active || girlSelectionItemView.activeState == .active ? .active : .inactive
     }
 }
 

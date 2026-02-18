@@ -15,9 +15,9 @@ import CombineCocoa
 final class OnboardingView: BaseView {
     let partnerSelectionViewController = OnboardingPartnerSelectionViewController()
     
-    let partnerNameInputViewController = OnboardingPartnerNameInputViewController().then {
-        $0.view.backgroundColor = .systemCyan
-    }
+    let partnerNameInputViewController = OnboardingPartnerNameInputViewController()
+
+    let partnerDateInputViewController = OnboardingPartnerDateInputViewController()
     
     let pageViewController = UIPageViewController(
         transitionStyle: .scroll,
@@ -25,7 +25,7 @@ final class OnboardingView: BaseView {
     )
     
     var viewControllers: [UIViewController] {
-        return [partnerSelectionViewController, partnerNameInputViewController]
+        return [partnerSelectionViewController, partnerNameInputViewController, partnerDateInputViewController]
     }
     
     override func setup() {
@@ -80,6 +80,22 @@ final class OnboardingViewController: ViewController<OnboardingView> {
             .store(in: &cancellables)
         
         contentView.partnerNameInputViewController
+            .navigateToNextPagePublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] in
+                guard let self else { return }
+                contentView.partnerDateInputViewController
+                    .configureNickname(contentView.partnerNameInputViewController.nickname)
+
+                contentView.pageViewController.setViewControllers(
+                    [contentView.partnerDateInputViewController],
+                    direction: .forward,
+                    animated: true
+                )
+            }
+            .store(in: &cancellables)
+
+        contentView.partnerDateInputViewController
             .navigateToNextPagePublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] in
