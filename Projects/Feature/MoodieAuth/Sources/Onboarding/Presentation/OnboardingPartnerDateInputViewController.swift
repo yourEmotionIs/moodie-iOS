@@ -114,7 +114,6 @@ final class OnboardingPartnerDateInputView: BaseView {
         nextButton.snp.makeConstraints { make in
             make.horizontalEdges.equalToSuperview().inset(20)
             make.bottom.equalTo(self.safeAreaLayoutGuide).inset(20)
-            make.height.equalTo(48)
         }
     }
 

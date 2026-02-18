@@ -18,6 +18,8 @@ final class OnboardingView: BaseView {
     let partnerNameInputViewController = OnboardingPartnerNameInputViewController()
 
     let partnerDateInputViewController = OnboardingPartnerDateInputViewController()
+
+    let invitationViewController = OnboardingInvitationViewController()
     
     let pageViewController = UIPageViewController(
         transitionStyle: .scroll,
@@ -25,7 +27,7 @@ final class OnboardingView: BaseView {
     )
     
     var viewControllers: [UIViewController] {
-        return [partnerSelectionViewController, partnerNameInputViewController, partnerDateInputViewController]
+        return [partnerSelectionViewController, partnerNameInputViewController, partnerDateInputViewController, invitationViewController]
     }
     
     override func setup() {
@@ -96,6 +98,22 @@ final class OnboardingViewController: ViewController<OnboardingView> {
             .store(in: &cancellables)
 
         contentView.partnerDateInputViewController
+            .navigateToNextPagePublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] in
+                guard let self else { return }
+                contentView.invitationViewController
+                    .configureNickname(contentView.partnerNameInputViewController.nickname)
+
+                contentView.pageViewController.setViewControllers(
+                    [contentView.invitationViewController],
+                    direction: .forward,
+                    animated: true
+                )
+            }
+            .store(in: &cancellables)
+
+        contentView.invitationViewController
             .navigateToNextPagePublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] in
