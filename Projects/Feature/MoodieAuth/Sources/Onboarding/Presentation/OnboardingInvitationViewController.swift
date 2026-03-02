@@ -43,7 +43,7 @@ final class OnboardingInvitationView: BaseView {
     }
 
     private let invitationCardImageView = UIImageView().then {
-        $0.image = .onboardingBoyHalf
+        $0.image = .onboardingBoyCard
         $0.contentMode = .scaleAspectFit
     }
 
@@ -105,9 +105,9 @@ final class OnboardingInvitationView: BaseView {
     private func cardImage(for partnerType: OnboardingPartnerType?) -> UIImage {
         switch partnerType {
         case .girlfriend:
-            return .onboardingGirlClear
+            return .onboardingGirlCard
         case .boyfriend, .none:
-            return .onboardingBoyHalf
+            return .onboardingBoyCard
         }
     }
 }
