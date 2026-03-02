@@ -23,11 +23,6 @@ final class OnboardingPartnerNameInputView: BaseView {
             .eraseToAnyPublisher()
     }
 
-    var nickname: String {
-        nicknameInputField.text?
-            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-    }
-    
     private let descriptionLabel = UILabel(
         typography: Typography(
             fontType: .nanumSquareRound,
@@ -37,94 +32,102 @@ final class OnboardingPartnerNameInputView: BaseView {
             applyLineHeight: true
         )
     ).then {
-        $0.text = "남자친구의 별명을 지어주세요"
+        $0.text = "상대방의 별명을 지어주세요"
     }
-    
+
     private let imageContainerView = UIView()
-    private let charactorImageView = UIImageView().then {
-        $0.image = .onboardingBoy2
+    private let characterImageView = UIImageView().then {
+        $0.image = .onboardingBoyClear
+        $0.contentMode = .scaleAspectFit
     }
-    
+
     private let nicknameInputField = MoodieTextField(
         placeholder: "상대방의 별명을 입력해요",
         text: ""
     )
-    
+
     private let nextButton = MoodieButton(buttonType: .inactive).then {
         $0.title = "다음"
     }
-    
+
     override func setup() {
         super.setup()
-        
+
         backgroundColor = .purple6
     }
-    
+
     override func setupSubviews() {
         addSubview(descriptionLabel)
         addSubview(imageContainerView)
-        imageContainerView.addSubview(charactorImageView)
-        
+        imageContainerView.addSubview(characterImageView)
+
         addSubview(nicknameInputField)
-        
         addSubview(nextButton)
     }
-    
+
     override func setupConstraints() {
         descriptionLabel.snp.makeConstraints { make in
             make.top.equalToSuperview().inset(8)
             make.horizontalEdges.equalToSuperview().inset(20)
         }
-        
+
         imageContainerView.snp.makeConstraints { make in
             make.top.equalTo(descriptionLabel.snp.bottom).offset(18)
             make.horizontalEdges.equalToSuperview().inset(20)
         }
-        charactorImageView.snp.makeConstraints { make in
+
+        characterImageView.snp.makeConstraints { make in
             make.center.equalToSuperview()
             make.verticalEdges.equalToSuperview().inset(54)
+            make.horizontalEdges.lessThanOrEqualToSuperview()
         }
-        
+
         nicknameInputField.snp.makeConstraints { make in
             make.top.equalTo(imageContainerView.snp.bottom).offset(24)
             make.horizontalEdges.equalToSuperview().inset(20)
         }
-        
+
         nextButton.snp.makeConstraints { make in
             make.horizontalEdges.equalToSuperview().inset(20)
             make.bottom.equalTo(self.safeAreaLayoutGuide).inset(20)
         }
     }
 
-    func updateNextButton(isEnabled: Bool) {
-        nextButton.buttonType = isEnabled ? .active : .inactive
+    func render(viewModel: OnboardingNameInputViewModel) {
+        descriptionLabel.text = viewModel.descriptionText
+
+        let image = partnerImage(for: viewModel.partnerType)
+        if characterImageView.image !== image {
+            characterImageView.image = image
+        }
+
+        if nicknameInputField.text != viewModel.nickname {
+            nicknameInputField.text = viewModel.nickname
+        }
+
+        nextButton.buttonType = viewModel.isNextEnabled ? .active : .inactive
+    }
+
+    private func partnerImage(for partnerType: OnboardingPartnerType?) -> UIImage {
+        switch partnerType {
+        case .girlfriend:
+            return .onboardingGirlClear
+        case .boyfriend, .none:
+            return .onboardingBoyClear
+        }
     }
 }
 
 final class OnboardingPartnerNameInputViewController: ViewController<OnboardingPartnerNameInputView> {
-    private var cancellables = Set<AnyCancellable>()
-
-    var navigateToNextPagePublisher: AnyPublisher<Void, Never> {
+    var didTapNextPublisher: AnyPublisher<Void, Never> {
         contentView.onTouchNextButton
     }
 
-    var nickname: String {
-        contentView.nickname
-    }
-    
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        bindViewActions()
+    var nicknameTextPublisher: AnyPublisher<String, Never> {
+        contentView.nicknameTextPublisher
     }
 
-    private func bindViewActions() {
-        contentView.nicknameTextPublisher
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).count >= 2 }
-            .removeDuplicates()
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] isEnabled in
-                self?.contentView.updateNextButton(isEnabled: isEnabled)
-            }
-            .store(in: &cancellables)
+    func render(viewModel: OnboardingNameInputViewModel) {
+        contentView.render(viewModel: viewModel)
     }
 }

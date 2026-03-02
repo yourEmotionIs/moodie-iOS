@@ -29,6 +29,8 @@ extension OnboardingPartnerDateInputView {
             color: .gray4,
             applyLineHeight: true
         )
+
+        static let defaultDdayText = "오늘까지 D+N일이에요"
     }
 }
 
@@ -37,8 +39,12 @@ final class OnboardingPartnerDateInputView: BaseView {
         nextButton.onTouchButtonPulbisher
     }
 
+    var selectedDatePublisher: AnyPublisher<Date, Never> {
+        selectedDateSubject.eraseToAnyPublisher()
+    }
+
     private let descriptionLabel = UILabel(typography: Constants.descriptionTypography).then {
-        $0.text = "(상대방의 별명)과 언제부터\n만났나요"
+        $0.text = "상대방과 언제부터\n만났나요"
         $0.numberOfLines = 0
     }
 
@@ -48,7 +54,7 @@ final class OnboardingPartnerDateInputView: BaseView {
     )
 
     private let dDayLabel = UILabel(typography: Constants.dDayTypography).then {
-        $0.text = "오늘까지 D+N일이에요"
+        $0.text = Constants.defaultDdayText
     }
 
     private let nextButton = MoodieButton(buttonType: .inactive).then {
@@ -71,13 +77,8 @@ final class OnboardingPartnerDateInputView: BaseView {
         return formatter
     }()
 
-    private var selectedDate: Date? {
-        didSet {
-            let isEnabled = selectedDate != nil
-            nextButton.buttonType = isEnabled ? .active : .inactive
-        }
-    }
-
+    private let selectedDateSubject = PassthroughSubject<Date, Never>()
+    private var currentSelectedDate: Date?
     private var cancellables = Set<AnyCancellable>()
 
     override func setup() {
@@ -117,14 +118,19 @@ final class OnboardingPartnerDateInputView: BaseView {
         }
     }
 
-    func updateNickname(_ nickname: String) {
-        let trimmedNickname = nickname.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmedNickname.isEmpty {
-            descriptionLabel.text = "상대방과 언제부터\n만났나요"
-            return
+    func render(viewModel: OnboardingDateInputViewModel) {
+        descriptionLabel.text = viewModel.descriptionText
+
+        if currentSelectedDate != viewModel.selectedDate {
+            applyDateUI(viewModel.selectedDate)
         }
 
-        descriptionLabel.text = "\(trimmedNickname)과 언제부터\n만났나요"
+        if dateInputField.text != viewModel.dateText {
+            dateInputField.text = viewModel.dateText
+        }
+
+        dDayLabel.text = viewModel.dDayText
+        nextButton.buttonType = viewModel.isNextEnabled ? .active : .inactive
     }
 
     private func configureDateInput() {
@@ -139,7 +145,7 @@ final class OnboardingPartnerDateInputView: BaseView {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] in
                 guard let self else { return }
-                self.applySelectedDate(self.datePicker.date)
+                self.handleUserSelectedDate(self.datePicker.date)
             }
             .store(in: &cancellables)
     }
@@ -165,12 +171,27 @@ final class OnboardingPartnerDateInputView: BaseView {
     }
 
     @objc private func didTapDoneButton() {
-        applySelectedDate(datePicker.date)
+        handleUserSelectedDate(datePicker.date)
         _ = dateInputField.resignFirstResponder()
     }
 
-    private func applySelectedDate(_ date: Date) {
-        selectedDate = date
+    private func handleUserSelectedDate(_ date: Date) {
+        let normalizedDate = Calendar.current.startOfDay(for: date)
+        applyDateUI(normalizedDate)
+        selectedDateSubject.send(normalizedDate)
+    }
+
+    private func applyDateUI(_ date: Date?) {
+        currentSelectedDate = date
+
+        guard let date else {
+            dateInputField.text = nil
+            dDayLabel.text = Constants.defaultDdayText
+            datePicker.setDate(Date(), animated: false)
+            return
+        }
+
+        datePicker.setDate(date, animated: false)
         dateInputField.text = dateFormatter.string(from: date)
         dDayLabel.text = "오늘까지 D+\(calculateDday(from: date))일이에요"
     }
@@ -185,11 +206,15 @@ final class OnboardingPartnerDateInputView: BaseView {
 }
 
 final class OnboardingPartnerDateInputViewController: ViewController<OnboardingPartnerDateInputView> {
-    var navigateToNextPagePublisher: AnyPublisher<Void, Never> {
+    var didTapNextPublisher: AnyPublisher<Void, Never> {
         contentView.onTouchNextButton
     }
 
-    func configureNickname(_ nickname: String) {
-        contentView.updateNickname(nickname)
+    var selectedDatePublisher: AnyPublisher<Date, Never> {
+        contentView.selectedDatePublisher
+    }
+
+    func render(viewModel: OnboardingDateInputViewModel) {
+        contentView.render(viewModel: viewModel)
     }
 }

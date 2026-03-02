@@ -13,20 +13,20 @@ import Combine
 import CombineCocoa
 
 final class OnboardingPartnerSelectionView: BaseView {
-    //MARK: Properties
+    // MARK: Properties
     var onTouchNextButton: AnyPublisher<Void, Never> {
         nextButton.onTouchButtonPulbisher
     }
-    
+
     var onTouchBoyPublisher: AnyPublisher<Void, Never> {
         boySelectionItemView.onTouchPartnerItemPublisher
     }
-    
+
     var onTouchGirlPublisher: AnyPublisher<Void, Never> {
         girlSelectionItemView.onTouchPartnerItemPublisher
     }
-    
-    //MARK: UI Components
+
+    // MARK: UI Components
     private let descriptionLabel = UILabel(
         typography: Typography(
             fontType: .nanumSquareRound,
@@ -38,12 +38,13 @@ final class OnboardingPartnerSelectionView: BaseView {
     ).then {
         $0.text = "누구와 함께 사용하나요"
     }
-    
+
     private let selectionItemContainerView = UIStackView().then {
         $0.axis = .horizontal
         $0.distribution = .fillEqually
         $0.spacing = 8
     }
+
     private let boySelectionItemView = PartnerSelectionView().then {
         $0.configure(
             partnerImage: .onboardingBoy,
@@ -51,6 +52,7 @@ final class OnboardingPartnerSelectionView: BaseView {
         )
         $0.activeState = .inactive
     }
+
     private let girlSelectionItemView = PartnerSelectionView().then {
         $0.configure(
             partnerImage: .onboardingGirl,
@@ -58,94 +60,84 @@ final class OnboardingPartnerSelectionView: BaseView {
         )
         $0.activeState = .inactive
     }
-    
+
     private let nextButton = MoodieButton(buttonType: .inactive).then {
         $0.title = "다음"
     }
-    
-    //MARK: Life Cycle
+
+    // MARK: Life Cycle
     override func setup() {
         super.setup()
-        
-        self.backgroundColor = .purple6
+
+        backgroundColor = .purple6
     }
-    
+
     override func setupSubviews() {
         addSubview(descriptionLabel)
         addSubview(selectionItemContainerView)
         [boySelectionItemView, girlSelectionItemView]
             .forEach { selectionItemContainerView.addArrangedSubview($0) }
-        
+
         addSubview(nextButton)
     }
-    
+
     override func setupConstraints() {
         descriptionLabel.snp.makeConstraints { make in
             make.top.equalToSuperview().inset(8)
             make.horizontalEdges.equalToSuperview().inset(20)
         }
-        
+
         selectionItemContainerView.snp.makeConstraints { make in
             make.top.equalTo(descriptionLabel.snp.bottom).offset(18)
             make.horizontalEdges.equalToSuperview().inset(20)
         }
-        
+
         boySelectionItemView.snp.makeConstraints { make in
             make.height.equalTo(boySelectionItemView.snp.width)
         }
-        
+
         girlSelectionItemView.snp.makeConstraints { make in
             make.height.equalTo(girlSelectionItemView.snp.width)
         }
-        
+
         nextButton.snp.makeConstraints { make in
             make.horizontalEdges.equalToSuperview().inset(20)
             make.bottom.equalTo(self.safeAreaLayoutGuide).inset(20)
         }
     }
-    
-    func toggleBoySelection() {
-        boySelectionItemView.activeState = boySelectionItemView.activeState == .active ? .inactive : .active
-        girlSelectionItemView.activeState = .inactive
-        
-        nextButton.buttonType = boySelectionItemView.activeState == .active || girlSelectionItemView.activeState == .active ? .active : .inactive
-    }
-    
-    func toggleGirlSelection() {
-        girlSelectionItemView.activeState = girlSelectionItemView.activeState == .active ? .inactive : .active
-        boySelectionItemView.activeState = .inactive
-        
-        nextButton.buttonType = boySelectionItemView.activeState == .active || girlSelectionItemView.activeState == .active ? .active : .inactive
+
+    func render(viewModel: OnboardingSelectionViewModel) {
+        switch viewModel.selectedPartnerType {
+        case .boyfriend:
+            boySelectionItemView.activeState = .active
+            girlSelectionItemView.activeState = .inactive
+        case .girlfriend:
+            boySelectionItemView.activeState = .inactive
+            girlSelectionItemView.activeState = .active
+        case .none:
+            boySelectionItemView.activeState = .inactive
+            girlSelectionItemView.activeState = .inactive
+        }
+
+        nextButton.buttonType = viewModel.isNextEnabled ? .active : .inactive
     }
 }
 
 final class OnboardingPartnerSelectionViewController: ViewController<OnboardingPartnerSelectionView> {
-    private var cancellables = Set<AnyCancellable>()
-    
-    var navigateToNextPagePublisher: AnyPublisher<Void, Never> {
+    var didTapNextPublisher: AnyPublisher<Void, Never> {
         contentView.onTouchNextButton
     }
-    
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        
-        bindViewActions()
+
+    var didSelectPartnerTypePublisher: AnyPublisher<OnboardingPartnerType, Never> {
+        Publishers.Merge(
+            contentView.onTouchBoyPublisher.map { OnboardingPartnerType.boyfriend },
+            contentView.onTouchGirlPublisher.map { OnboardingPartnerType.girlfriend }
+        )
+        .eraseToAnyPublisher()
     }
-    
-    private func bindViewActions() {
-        contentView.onTouchBoyPublisher
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] in
-                self?.contentView.toggleBoySelection()
-            }
-            .store(in: &cancellables)
-        
-        contentView.onTouchGirlPublisher
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] in
-                self?.contentView.toggleGirlSelection()
-            }
-            .store(in: &cancellables)
+
+    func render(viewModel: OnboardingSelectionViewModel) {
+        contentView.render(viewModel: viewModel)
     }
 }
 
@@ -170,13 +162,13 @@ extension PartnerSelectionView {
 }
 
 final class PartnerSelectionView: BaseView {
-    //MARK: Properties
+    // MARK: Properties
     var onTouchPartnerItemPublisher: AnyPublisher<Void, Never> {
         tapGesture.tapPublisher
             .map { _ in () }
             .eraseToAnyPublisher()
     }
-    
+
     var activeState: ActiveState = .inactive {
         didSet {
             switch activeState {
@@ -191,42 +183,42 @@ final class PartnerSelectionView: BaseView {
             }
         }
     }
-    
-    //MARK: UI Components
+
+    // MARK: UI Components
     private let tapGesture = UITapGestureRecognizer()
-    
+
     private let partnerImageView = UIImageView()
     private let titleLabel = UILabel(typography: Constants.titleTypo)
-    
-    //MARK: Life Cycle
+
+    // MARK: Life Cycle
     override func setup() {
         super.setup()
-        
+
         layer.cornerRadius = 24
         backgroundColor = .gray8
-        
+
         addGestureRecognizer(tapGesture)
     }
-    
+
     override func setupSubviews() {
         addSubview(partnerImageView)
         addSubview(titleLabel)
     }
-    
+
     override func setupConstraints() {
         partnerImageView.snp.makeConstraints { make in
             make.top.equalToSuperview().inset(8)
             make.centerX.equalToSuperview()
             make.size.equalTo(120)
         }
-        
+
         titleLabel.snp.makeConstraints { make in
             make.top.equalTo(partnerImageView.snp.bottom).offset(8)
             make.centerX.equalToSuperview()
             make.bottom.lessThanOrEqualToSuperview()
         }
     }
-    
+
     func configure(
         partnerImage: UIImage,
         title: String

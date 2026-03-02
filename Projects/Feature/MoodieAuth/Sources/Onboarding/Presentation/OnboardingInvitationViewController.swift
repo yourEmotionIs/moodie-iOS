@@ -29,24 +29,6 @@ extension OnboardingInvitationView {
             color: .gray4,
             applyLineHeight: true
         )
-
-        static let cardTitleTypography = Typography(
-            fontType: .nanumSquareRound,
-            size: .size24,
-            weight: .heavy,
-            alignment: .center,
-            color: .gray1,
-            applyLineHeight: true
-        )
-
-        static let cardMessageTypography = Typography(
-            fontType: .nanumSquareRound,
-            size: .size22,
-            weight: .heavy,
-            alignment: .center,
-            color: .gray1,
-            applyLineHeight: true
-        )
     }
 }
 
@@ -56,32 +38,17 @@ final class OnboardingInvitationView: BaseView {
     }
 
     private let descriptionLabel = UILabel(typography: Constants.descriptionTypography).then {
-        $0.text = "(상대방의 별명)에게 무디 초대장을\n보내주세요"
+        $0.text = "상대방에게 무디 초대장을\n보내주세요"
         $0.numberOfLines = 0
     }
 
-    private let invitationCardView = UIView().then {
-        $0.backgroundColor = .purple5
-        $0.layer.cornerRadius = 24
-        $0.clipsToBounds = true
-    }
-
-    private let cardTitleLabel = UILabel(typography: Constants.cardTitleTypography).then {
-        $0.text = "Moodie"
-    }
-
-    private let cardMessageLabel = UILabel(typography: Constants.cardMessageTypography).then {
-        $0.text = "소중한 너와 매일매일\n감정을 공유하고 싶어"
-        $0.numberOfLines = 0
-    }
-
-    private let cardImageView = UIImageView().then {
+    private let invitationCardImageView = UIImageView().then {
         $0.image = .onboardingBoyHalf
         $0.contentMode = .scaleAspectFit
     }
 
     private let subtitleLabel = UILabel(typography: Constants.subtitleTypography).then {
-        $0.text = "(상대방의 별명)이 초대장을 받으면\n무디를 함께 시작할 수 있어요"
+        $0.text = "상대방이 초대장을 받으면\n무디를 함께 시작할 수 있어요"
         $0.numberOfLines = 0
     }
 
@@ -97,10 +64,7 @@ final class OnboardingInvitationView: BaseView {
 
     override func setupSubviews() {
         addSubview(descriptionLabel)
-        addSubview(invitationCardView)
-        invitationCardView.addSubview(cardTitleLabel)
-        invitationCardView.addSubview(cardMessageLabel)
-        invitationCardView.addSubview(cardImageView)
+        addSubview(invitationCardImageView)
         addSubview(subtitleLabel)
         addSubview(inviteButton)
     }
@@ -111,30 +75,14 @@ final class OnboardingInvitationView: BaseView {
             make.horizontalEdges.equalToSuperview().inset(20)
         }
 
-        invitationCardView.snp.makeConstraints { make in
+        invitationCardImageView.snp.makeConstraints { make in
             make.top.equalTo(descriptionLabel.snp.bottom).offset(30)
             make.horizontalEdges.equalToSuperview().inset(20)
-        }
-
-        cardTitleLabel.snp.makeConstraints { make in
-            make.top.equalToSuperview().inset(20)
-            make.centerX.equalToSuperview()
-        }
-
-        cardMessageLabel.snp.makeConstraints { make in
-            make.top.equalTo(cardTitleLabel.snp.bottom).offset(14)
-            make.centerX.equalToSuperview()
-            make.horizontalEdges.lessThanOrEqualToSuperview().inset(16)
-        }
-
-        cardImageView.snp.makeConstraints { make in
-            make.top.equalTo(cardMessageLabel.snp.bottom).offset(56)
-            make.bottom.equalToSuperview()
-            make.centerX.equalToSuperview()
+            make.height.equalTo(invitationCardImageView.snp.width)
         }
 
         subtitleLabel.snp.makeConstraints { make in
-            make.top.equalTo(invitationCardView.snp.bottom).offset(24)
+            make.top.equalTo(invitationCardImageView.snp.bottom).offset(24)
             make.horizontalEdges.equalToSuperview().inset(20)
         }
 
@@ -144,25 +92,32 @@ final class OnboardingInvitationView: BaseView {
         }
     }
 
-    func updateNickname(_ nickname: String) {
-        let trimmedNickname = nickname.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmedNickname.isEmpty {
-            descriptionLabel.text = "상대방에게 무디 초대장을\n보내주세요"
-            subtitleLabel.text = "상대방이 초대장을 받으면\n무디를 함께 시작할 수 있어요"
-            return
+    func render(viewModel: OnboardingInvitationViewModel) {
+        let image = cardImage(for: viewModel.partnerType)
+        if invitationCardImageView.image !== image {
+            invitationCardImageView.image = image
         }
 
-        descriptionLabel.text = "\(trimmedNickname)에게 무디 초대장을\n보내주세요"
-        subtitleLabel.text = "\(trimmedNickname)이 초대장을 받으면\n무디를 함께 시작할 수 있어요"
+        descriptionLabel.text = viewModel.descriptionText
+        subtitleLabel.text = viewModel.subtitleText
+    }
+
+    private func cardImage(for partnerType: OnboardingPartnerType?) -> UIImage {
+        switch partnerType {
+        case .girlfriend:
+            return .onboardingGirlClear
+        case .boyfriend, .none:
+            return .onboardingBoyHalf
+        }
     }
 }
 
 final class OnboardingInvitationViewController: ViewController<OnboardingInvitationView> {
-    var navigateToNextPagePublisher: AnyPublisher<Void, Never> {
+    var didTapInviteButtonPublisher: AnyPublisher<Void, Never> {
         contentView.onTouchInviteButtonPublisher
     }
 
-    func configureNickname(_ nickname: String) {
-        contentView.updateNickname(nickname)
+    func render(viewModel: OnboardingInvitationViewModel) {
+        contentView.render(viewModel: viewModel)
     }
 }
